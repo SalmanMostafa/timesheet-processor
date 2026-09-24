@@ -1,0 +1,39 @@
+def attachment_to_images(attachment_item): #attachment items are items['contentBytes']
+    media_type = attachment_item['@odata.mediaContentType']
+    content_bytes = attachment_item['contentBytes']
+
+    if media_type in ["image/jpeg", "image/png"]:
+        return [
+            {
+                "mime_type": media_type,
+                "base64": content_bytes
+            }
+        ]
+    elif media_type  == 'application/pdf':
+        # Base64 -> original PDF bytes
+        pdf_bytes = base64.b64decode(content_bytes)
+        pdf = fitz.open(
+            stream=pdf_bytes,
+            filetype="pdf"
+        )
+        images = []
+        for page in pdf:
+            pix = page.get_pixmap()
+            # PDF page -> PNG bytes
+            png_bytes = pix.tobytes("png")
+
+            # PNG bytes -> Base64
+            page_base64 = base64.b64encode(
+                png_bytes
+            ).decode("utf-8")
+            images.append(
+                {
+                    "mime_type": "image/png",
+                    "base64": page_base64
+                }
+            )
+        pdf.close()
+        return images
+    else:
+        print(f"Unsupported attachment type: {media_type}")
+        return []
